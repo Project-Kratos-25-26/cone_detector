@@ -24,15 +24,26 @@ import time
 # EASY CONFIGURATION SECTION
 # Change these variables to tune the computer vision logic
 # ==============================================================================
-DEFAULT_SATURATION_THRESHOLD = 0      # Min saturation (0-255) to consider a cone "colored"
-DEFAULT_BRIGHTNESS_THRESHOLD = 60     # Min brightness (0-255) to be considered valid
-MIN_ASPECT_RATIO = 0.25               # Min width/height ratio (Cones are tall/thin)
-MAX_ASPECT_RATIO = 0.9                # Max width/height ratio
-USE_CLAHE_DEFAULT = True              # Enable Contrast Limited Adaptive Histogram Equalization by default
-CONFIDENCE_THRESHOLD_DEFAULT = 0.4    # YOLO Confidence Threshold
-CONE_REAL_HEIGHT_M = 0.3              # Real height of the cone in meters (for depth estimation)
-FOCAL_LENGTH_PX = 700.0               # Camera focal length in pixels (approx)
-DEBUG_MODE_DEFAULT = True             # Enable verbose logging by default
+
+# --- DETECTION SENSITIVITY ---
+CONFIDENCE_THRESHOLD_DEFAULT = 0.4    # [0.0 - 1.0] Lower to detect more, Higher to be more sure.
+
+# --- COLOR & EXPOSURE (OpenCV) ---
+DEFAULT_SATURATION_THRESHOLD = 0      # [0 - 255] Min color intensity. Increase to ignore washed-out cones.
+DEFAULT_BRIGHTNESS_THRESHOLD = 60     # [0 - 255] SOFTWARE EXPOSURE CHECK. Ignore objects darker than this. 
+
+# --- SHAPE FILTERS ---
+MIN_ASPECT_RATIO = 0.25               # [0.0 - 1.0] Min width/height. Cones are tall & thin.
+MAX_ASPECT_RATIO = 0.9                # [0.0 - 1.0] Max width/height. 1.0 would be a perfect square.
+
+# --- IMAGE ENHANCEMENT ---
+USE_CLAHE_DEFAULT = True              # [True/False] "Contrast Limited Adaptive Histogram Equalization".
+                                      # Helps see cones in shadows. Acts like HDR.
+
+# --- CAMERA GEOMETRY ---
+CONE_REAL_HEIGHT_M = 0.3              # Real height of the cone in meters.
+FOCAL_LENGTH_PX = 700.0               # Approximate focal length in pixels.
+DEBUG_MODE_DEFAULT = True             # Print helper messages to terminal.
 # ==============================================================================
 
 class ConeDetectorNode(Node):
@@ -91,6 +102,7 @@ class ConeDetectorNode(Node):
                     break
             if not found:
                 self.get_logger().error(f"❌ FATAL: Could not find model file! Checked: {candidates}")
+                self.get_logger().error("Check the model path in the launch file")
                 self.destroy_node()
                 return
 
@@ -316,7 +328,7 @@ class ConeDetectorNode(Node):
                 depth_m = (FOCAL_LENGTH_PX * CONE_REAL_HEIGHT_M) / h_box
                 
                 # --- E. Drawing & Output ---
-                label = f"{color_name} {depth_m:.1f}m"
+                label = f"{color_name} {depth_m:.1f}m ({conf:.2f})"
                 
                 cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color_rgb, 2)
                 
